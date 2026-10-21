@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مكتبتي</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+body{margin:0;background:#0a0a0a;color:#fff;font-family:tahoma}
+header{padding:15px;background:#111;display:flex;justify-content:space-between}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
+.card{background:#1a1a1a;border-radius:12px;overflow:hidden}
+.card img{width:100%;height:120px;object-fit:cover}
+video{width:100%;height:240px;background:#000}
+.ad-box{background:#222;text-align:center;padding:10px;margin:10px;border-radius:8px}
+</style>
+</head>
+<body>
+<header><b>🎬 مكتبتي</b><span>VIP</span></header>
+
+<!-- مكان اعلان Adsterra Banner -->
+<div class="ad-box" id="ad-top">
+<script>
+ // الصق هنا كود Adsterra Native Banner
+</script>
+</div>
+
+<video id="player" controls poster="https://i.imgur.com/8Km9tLL.png"></video>
+<div class="grid" id="list"></div>
+
+<!-- مكان اعلان Adsterra Popunder -->
+<div class="ad-box" id="ad-bottom"></div>
+
+<script>
+const SECRET = "iraq2026_secret";
+const hls = new Hls();
+const player = document.getElementById('player');
+
+async function load(){
+  const res = await fetch(`/api/channels?token=${SECRET}`);
+  const text = await res.text();
+  const lines = text.split('\n');
+  let html='';
+  lines.forEach(l=>{
+    if(l.startsWith('#EXTINF')){
+      const name = l.split(',')[1];
+      html+=`<div class="card" onclick="playNext('${name}')"><img src="https://i.imgur.com/8Km9tLL.png"><div style="padding:8px">${name}</div></div>`;
+    }
+    if(l.startsWith('/stream')){
+      window.lastStream = l; // للتجربة
+    }
+  });
+  document.getElementById('list').innerHTML=html;
+}
+function playNext(name){
+  // كود اعلان Adsterra Direct Link عند الضغط
+  // window.open('YOUR ADSTERRA DIRECT LINK','_blank');
+  
+  if(Hls.isSupported()){
+    hls.loadSource(window.lastStream);
+    hls.attachMedia(player);
+    player.play();
+  }
+}
+load();
+</script>
+</body>
+</html>
