@@ -4,95 +4,57 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>مكتبتي</title>
-<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 <style>
-body{margin:0;background:#080808;color:#fff;font-family:tahoma}
-header{padding:14px;background:#141414;text-align:center;font-size:18px;font-weight:bold}
-#playerWrap{position:sticky;top:0;z-index:10;background:#000}
-video{width:100%;height:220px;background:#000}
+body{margin:0;background:#0e0e0e;color:#fff;font-family:tahoma}
+header{padding:14px;background:#181818;text-align:center;font-size:18px}
+video{width:100%;height:230px;background:#000}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
-.card{background:#1e1e1e;border-radius:12px;overflow:hidden;border:1px solid #2a2a2a}
-.card:active{transform:scale(0.97)}
-.card .img{width:100%;height:110px;background:#111;display:flex;align-items:center;justify-content:center;font-size:40px}
-.card .title{padding:8px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ad-box{margin:10px;background:#111;padding:8px;border-radius:8px;text-align:center;border:1px dashed #333}
+.card{background:#1f1f1f;border-radius:12px;overflow:hidden;border:1px solid #333}
+.card img{width:100%;height:110px;object-fit:cover;background:#111}
+.card .t{padding:8px;font-size:13px}
 </style>
 </head>
 <body>
-<header>🎬 مكتبتي للافلام</header>
-<div id="playerWrap"><video id="player" controls playsinline></video></div>
-
-<div class="ad-box">مكان اعلان Adsterra Banner العلوي</div>
-<div class="grid" id="list">جاري تحميل القائمة...</div>
-<div class="ad-box">مكان اعلان Adsterra بالاسفل</div>
+<header>🎬 مكتبتي</header>
+<video id="player" controls playsinline poster="https://i.imgur.com/8Km9tLL.png"></video>
+<div class="grid" id="list">جاري التحميل...</div>
 
 <script>
-const SECRET = "iraq2026_secret";
-const API_URL = `/api/channels?token=${SECRET}`;
-let channels = [];
-
-async function loadChannels(){
-  try{
-    const res = await fetch(API_URL);
-    if(!res.ok) throw new Error("token error");
-    const text = await res.text();
-    console.log(text); // للفحص
-
-    const lines = text.split('\n');
-    channels = [];
-    for(let i=0;i<lines.length;i++){
-      let line = lines[i].trim();
-      if(line.startsWith('#EXTINF')){
-        let name = line.split(',').pop().trim();
-        let logo = line.match(/tvg-logo="([^"]+)"/)?.[1] || "";
-        let nextLine = lines[i+1]?.trim();
-        if(nextLine && !nextLine.startsWith('#')){
-          channels.push({name, logo, url: nextLine});
-        }
+const SECRET="iraq2026_secret";
+async function load(){
+  const res = await fetch(`/api/channels?token=${SECRET}`);
+  const text = await res.text();
+  const lines = text.split('\n');
+  let html='';
+  for(let i=0;i<lines.length;i++){
+    let l=lines[i].trim();
+    if(l.startsWith('#EXTINF')){
+      let name = l.split(',').pop().trim();
+      let logoMatch = l.match(/tvg-logo="([^"]+)"/);
+      let logo = logoMatch ? logoMatch[1] : "https://i.imgur.com/8Km9tLL.png";
+      let url = lines[i+1]?.trim();
+      if(url){
+        // حول الرابط الى محمي
+        let protectedUrl = `/stream?url=${encodeURIComponent(url)}&token=${SECRET}`;
+        html+=`<div class="card" onclick="playVideo('${protectedUrl}')">
+          <img src="${logo}" onerror="this.src='https://i.imgur.com/8Km9tLL.png'">
+          <div class="t">${name}</div>
+        </div>`;
       }
     }
-    renderList();
-  }catch(e){
-    document.getElementById('list').innerHTML = `<div style="grid-column:1/3;text-align:center;padding:20px">خطأ بالتحميل: ${e.message}<br>تأكد من ملف channels.m3u</div>`;
   }
+  document.getElementById('list').innerHTML = html || "القائمة فارغة";
 }
-
-function renderList(){
-  if(channels.length===0){
-    document.getElementById('list').innerHTML = "القائمة فارغة - تأكد من ملف channels.m3u";
-    return;
-  }
-  let html='';
-  channels.forEach((ch, idx)=>{
-    html+=`<div class="card" onclick="playChannel(${idx})">
-      <div class="img">🎬</div>
-      <div class="title">${ch.name}</div>
-    </div>`;
-  });
-  document.getElementById('list').innerHTML=html;
-}
-
-function playChannel(idx){
-  // --- هنا تحط رابط Adsterra Direct Link ---
-  // window.open('YOUR ADSTERRA DIRECT LINK','_blank');
-
-  const ch = channels[idx];
-  const video = document.getElementById('player');
-  const url = ch.url;
-
-  if(Hls.isSupported()){
-    const hls = new Hls();
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, ()=> video.play());
-  }else if(video.canPlayType('application/vnd.apple.mpegurl')){
-    video.src = url;
-    video.play();
-  }
+function playVideo(url){
+  const v=document.getElementById('player');
+  v.src=url;
+  v.load();
+  v.play();
   window.scrollTo(0,0);
+  // هنا تحط اعلان Adsterra Direct Link
+  // window.open('YOUR ADSTERRA LINK','_blank');
 }
-
-loadChannels();
+load();
 </script>
 </body>
 </html>
