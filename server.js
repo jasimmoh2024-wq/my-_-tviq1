@@ -1,67 +1,50 @@
 const express = require('express');
-const fetch = require('node-fetch');
-const cors = require('cors');
-const fs = require('fs');
 const app = express();
+const fs = require('fs');
+const https = require('https');
+const http = require('http');
 
-const SECRET_KEY = "iraq2026_secret";
-app.use(cors());
+const SECRET = "iraq2026_secret";
+app.use((req,res,next)=>{ res.header("Access-Control-Allow-Origin","*"); next(); });
 app.use(express.static(__dirname));
 
-// API يرجع القنوات بشكل صحيح
 app.get('/api/channels', (req,res)=>{
-  if(req.query.token !== SECRET_KEY) return res.status(403).send("Forbidden");
-  try{
-    const data = fs.readFileSync('./channels.m3u','utf8');
-    const lines = data.split('\n');
-    let newM3u = "";
-    for(let i=0;i<lines.length;i++){
-      let line = lines[i];
-      if(line.trim().startsWith('#EXTINF') || line.trim().startsWith('#EXTM3U')){
-        newM3u += line + "\n";
-      } else if(line.trim().startsWith('http')){
-        // حول الرابط الحقيقي الى رابط محمي
-        const protectedUrl = `/stream?url=${encodeURIComponent(line.trim())}&token=${SECRET_KEY}`;
-        newM3u += protectedUrl + "\n";
-      } else if(line.trim() !== ""){
-        newM3u += line + "\n";
-      }
-    }
-    res.type('text/plain').send(newM3u);
-  }catch(e){
-    res.status(500).send("error reading channels.m3u");
-  }
+  if(req.query.token !== SECRET) return res.status(403).send("Forbidden");
+  const data = fs.readFileSync('./channels.m3u','utf8');
+  res.type('text/plain').send(data);
 });
 
-// البروكسي الي يشغل الرابط ويخفيه
-app.get('/stream', async (req,res)=>{
-  if(req.query.token !== SECRET_KEY) return res.status(403).end();
-  const targetUrl = req.query.url;
-  if(!targetUrl) return res.status(400).send("no url");
-  try{
-    const decodedUrl = decodeURIComponent(targetUrl);
-    const response = await fetch(decodedUrl, {
-      headers: { "User-Agent": "Mozilla/5.0", "Referer": decodedUrl }
-    });
-    res.set('Access-Control-Allow-Origin','*');
-    // اذا كان ملف m3u8 لازم نعدل الروابط الي داخله ايضا
-    if(decodedUrl.includes('.m3u8')){
-      let text = await response.text();
-      text = text.replace(/(.*\.ts.*)/g, (m)=>{
-        // حول مقاطع ts ايضا الى بروكسي
-        return `/stream?url=${encodeURIComponent(new URL(m, decodedUrl).href)}&token=${SECRET_KEY}`;
+// بروكسي بسيط يشتغل مع كل الروابط
+app.get('/stream', (req,res)=>{
+  if(req.query.token !== SECRET) return res.status(403).end();
+  let url = req.query.url;
+  if(!url) return res.status(400).end();
+  url = decodeURIComponent(url);
+  
+  const client = url.startsWith('https') ? https : http;
+  client.get(url, {headers:{"User-Agent":"VLC"}}, (r)=>{
+    // اذا m3u8 عدل المسارات
+    if(url.endsWith('.m3u8')){
+      let body='';
+      r.on('data',c=>body+=c);
+      r.on('end',()=>{
+        const base = url.substring(0, url.lastIndexOf('/')+1);
+        body = body.split('\n').map(line=>{
+          line=line.trim();
+          if(line && !line.startsWith('#')){
+            const full = line.startsWith('http')? line : base+line;
+            return `/stream?url=${encodeURIComponent(full)}&token=${SECRET}`;
+          }
+          return line;
+        }).join('\n');
+        res.type('application/vnd.apple.mpegurl').send(body);
       });
-      res.type('application/vnd.apple.mpegurl').send(text);
     } else {
-      response.body.pipe(res);
+      res.writeHead(r.statusCode, r.headers);
+      r.pipe(res);
     }
-  }catch(e){
-    console.log(e);
-    res.status(500).send("stream error: "+e.message);
-  }
+  }).on('error', e=> res.status(500).send(e.message));
 });
 
-app.get('/', (req,res)=> res.sendFile(__dirname + '/index.html'));
-
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, ()=>console.log("running on "+PORT));
+app.get('/', (req,res)=> res.sendFile(__dirname+'/index.html'));
+app.listen(process.env.PORT||10000);
