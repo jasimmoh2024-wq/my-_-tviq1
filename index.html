@@ -5,56 +5,107 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>مكتبتي</title>
 <style>
-body{margin:0;background:#0e0e0e;color:#fff;font-family:tahoma}
-header{padding:14px;background:#181818;text-align:center;font-size:18px}
+body{margin:0;background:#0e0e0e;color:#fff;font-family:tahoma;text-align:center}
+header{padding:14px;background:#181818;font-size:18px;font-weight:bold}
 video{width:100%;height:230px;background:#000}
+.ad-box{margin:10px auto;display:flex;justify-content:center;align-items:center;min-height:60px;background:#111;border-radius:8px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .card{background:#1f1f1f;border-radius:12px;overflow:hidden;border:1px solid #333}
 .card img{width:100%;height:110px;object-fit:cover;background:#111}
-.card .t{padding:8px;font-size:13px}
+.card .t{padding:8px;font-size:13px;text-align:right}
 </style>
 </head>
 <body>
-<header>🎬 مكتبتي</header>
+
+<header>🎬 مكتبتي للافلام</header>
+
+<!-- بنر اعلاني علوي 320x50 -->
+<div class="ad-box">
+<script>
+  atOptions = {
+    'key' : '66361e7bf85b4cff423e3cf0f595da50',
+    'format' : 'iframe',
+    'height' : 50,
+    'width' : 320,
+    'params' : {}
+  };
+</script>
+<script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
+</div>
+
 <video id="player" controls playsinline poster="https://i.imgur.com/8Km9tLL.png"></video>
-<div class="grid" id="list">جاري التحميل...</div>
+
+<!-- بنر اعلاني وسط -->
+<div class="ad-box">
+<script>
+  atOptions = {
+    'key' : '66361e7bf85b4cff423e3cf0f595da50',
+    'format' : 'iframe',
+    'height' : 50,
+    'width' : 320,
+    'params' : {}
+  };
+</script>
+<script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
+</div>
+
+<div class="grid" id="list">جاري تحميل المسلسلات...</div>
+
+<!-- بنر اعلاني سفلي -->
+<div class="ad-box">
+<script>
+  atOptions = {
+    'key' : '66361e7bf85b4cff423e3cf0f595da50',
+    'format' : 'iframe',
+    'height' : 50,
+    'width' : 320,
+    'params' : {}
+  };
+</script>
+<script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
+</div>
 
 <script>
 const SECRET="iraq2026_secret";
 async function load(){
-  const res = await fetch(`/api/channels?token=${SECRET}`);
-  const text = await res.text();
-  const lines = text.split('\n');
-  let html='';
-  for(let i=0;i<lines.length;i++){
-    let l=lines[i].trim();
-    if(l.startsWith('#EXTINF')){
-      let name = l.split(',').pop().trim();
-      let logoMatch = l.match(/tvg-logo="([^"]+)"/);
-      let logo = logoMatch ? logoMatch[1] : "https://i.imgur.com/8Km9tLL.png";
-      let url = lines[i+1]?.trim();
-      if(url){
-        // حول الرابط الى محمي
-        let protectedUrl = `/stream?url=${encodeURIComponent(url)}&token=${SECRET}`;
-        html+=`<div class="card" onclick="playVideo('${protectedUrl}')">
-          <img src="${logo}" onerror="this.src='https://i.imgur.com/8Km9tLL.png'">
-          <div class="t">${name}</div>
-        </div>`;
+  try{
+    const res = await fetch(`/api/channels?token=${SECRET}`);
+    const text = await res.text();
+    const lines = text.split('\n');
+    let html='';
+    for(let i=0;i<lines.length;i++){
+      let l=lines[i].trim();
+      if(l.startsWith('#EXTINF')){
+        let name = l.split(',').pop().trim();
+        let logoMatch = l.match(/tvg-logo="([^"]+)"/);
+        let logo = logoMatch ? logoMatch[1] : "https://i.imgur.com/8Km9tLL.png";
+        let url = lines[i+1]?.trim();
+        if(url && url.startsWith('http')){
+          let protectedUrl = `/stream?url=${encodeURIComponent(url)}&token=${SECRET}`;
+          html+=`<div class="card" onclick="playVideo('${protectedUrl}')">
+            <img src="${logo}" onerror="this.src='https://i.imgur.com/8Km9tLL.png'">
+            <div class="t">${name}</div>
+          </div>`;
+        }
       }
     }
+    document.getElementById('list').innerHTML = html || "القائمة فارغة - تأكد من channels.m3u";
+  }catch(e){
+    document.getElementById('list').innerHTML = "خطأ: "+e.message;
   }
-  document.getElementById('list').innerHTML = html || "القائمة فارغة";
 }
 function playVideo(url){
   const v=document.getElementById('player');
   v.src=url;
   v.load();
-  v.play();
+  v.play().catch(()=>{});
   window.scrollTo(0,0);
-  // هنا تحط اعلان Adsterra Direct Link
-  // window.open('YOUR ADSTERRA LINK','_blank');
 }
 load();
 </script>
+
+<!-- كود Social Bar او Popunder تحطه هنا اذا عندك -->
+<!-- الصق كود البار هنا -->
+
 </body>
 </html>
