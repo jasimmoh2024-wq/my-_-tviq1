@@ -2,110 +2,129 @@
 <html dir="rtl" lang="ar">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>مكتبتي</title>
 <style>
-body{margin:0;background:#0e0e0e;color:#fff;font-family:tahoma;text-align:center}
-header{padding:14px;background:#181818;font-size:18px;font-weight:bold}
-video{width:100%;height:230px;background:#000}
-.ad-box{margin:10px auto;display:flex;justify-content:center;align-items:center;min-height:60px;background:#111;border-radius:8px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
-.card{background:#1f1f1f;border-radius:12px;overflow:hidden;border:1px solid #333}
-.card img{width:100%;height:110px;object-fit:cover;background:#111}
-.card .t{padding:8px;font-size:13px;text-align:right}
+*{box-sizing:border-box}
+body{margin:0;background:#080808;color:#fff;font-family:tahoma}
+header{padding:14px;background:#181818;text-align:center;font-size:18px;font-weight:bold;position:sticky;top:0;z-index:5}
+.ad-box{margin:10px auto;display:flex;justify-content:center;min-height:55px;background:#111;border-radius:8px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px}
+.card{background:#1e1e1e;border-radius:14px;overflow:hidden;border:1px solid #2a2a2a}
+.card img{width:100%;height:145px;object-fit:cover;display:block;background:#222}
+.card .t{padding:8px;font-size:13px;line-height:1.4;height:52px;overflow:hidden}
+
+/* نافذة الفيديو المنبثقة */
+#videoModal{display:none;position:fixed;inset:0;background:#000;z-index:9999;flex-direction:column}
+#videoModal.show{display:flex}
+#modalHeader{display:flex;justify-content:space-between;align-items:center;padding:12px;background:#111}
+#modalHeader button{background:#333;color:#fff;border:0;padding:8px 14px;border-radius:20px}
+video#player{width:100%;height:100%;flex:1;object-fit:contain;background:#000}
+.controls-row{display:flex;gap:8px;padding:10px;background:#111;justify-content:center}
+.controls-row button{background:#e50914;color:#fff;border:0;padding:10px 18px;border-radius:8px;font-size:14px}
 </style>
 </head>
 <body>
 
 <header>🎬 مكتبتي للافلام</header>
 
-<!-- بنر اعلاني علوي 320x50 -->
 <div class="ad-box">
-<script>
-  atOptions = {
-    'key' : '66361e7bf85b4cff423e3cf0f595da50',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
+<script>atOptions={'key':'66361e7bf85b4cff423e3cf0f595da50','format':'iframe','height':50,'width':320,'params':{}};</script>
 <script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
 </div>
 
-<video id="player" controls playsinline poster="https://i.imgur.com/8Km9tLL.png"></video>
+<div class="grid" id="list">جاري التحميل...</div>
 
-<!-- بنر اعلاني وسط -->
 <div class="ad-box">
-<script>
-  atOptions = {
-    'key' : '66361e7bf85b4cff423e3cf0f595da50',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
+<script>atOptions={'key':'66361e7bf85b4cff423e3cf0f595da50','format':'iframe','height':50,'width':320,'params':{}};</script>
 <script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
 </div>
 
-<div class="grid" id="list">جاري تحميل المسلسلات...</div>
-
-<!-- بنر اعلاني سفلي -->
-<div class="ad-box">
-<script>
-  atOptions = {
-    'key' : '66361e7bf85b4cff423e3cf0f595da50',
-    'format' : 'iframe',
-    'height' : 50,
-    'width' : 320,
-    'params' : {}
-  };
-</script>
-<script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
+<!-- نافذة الفيديو -->
+<div id="videoModal">
+  <div id="modalHeader">
+    <span id="videoTitle">تشغيل</span>
+    <button onclick="closeVideo()">✕ اغلاق</button>
+  </div>
+  <video id="player" controls playsinline controlsList="nodownload"></video>
+  <div class="controls-row">
+    <button onclick="toggleFull()">⛶ ملئ الشاشة</button>
+    <button onclick="closeVideo()">رجوع للقائمة</button>
+  </div>
+  <div class="ad-box">
+  <script>atOptions={'key':'66361e7bf85b4cff423e3cf0f595da50','format':'iframe','height':50,'width':320,'params':{}};</script>
+  <script src="https://bancadeltempoidea.org/22/66361e7bf85b4cff423e3cf0f595da50"></script>
+  </div>
 </div>
 
 <script>
 const SECRET="iraq2026_secret";
-async function load(){
+let wakeLock=null;
+
+// 1- منع انطفاء الشاشة اثناء المشاهدة
+async function enableWakeLock(){
   try{
-    const res = await fetch(`/api/channels?token=${SECRET}`);
-    const text = await res.text();
-    const lines = text.split('\n');
-    let html='';
-    for(let i=0;i<lines.length;i++){
-      let l=lines[i].trim();
-      if(l.startsWith('#EXTINF')){
-        let name = l.split(',').pop().trim();
-        let logoMatch = l.match(/tvg-logo="([^"]+)"/);
-        let logo = logoMatch ? logoMatch[1] : "https://i.imgur.com/8Km9tLL.png";
-        let url = lines[i+1]?.trim();
-        if(url && url.startsWith('http')){
-          let protectedUrl = `/stream?url=${encodeURIComponent(url)}&token=${SECRET}`;
-          html+=`<div class="card" onclick="playVideo('${protectedUrl}')">
-            <img src="${logo}" onerror="this.src='https://i.imgur.com/8Km9tLL.png'">
-            <div class="t">${name}</div>
-          </div>`;
-        }
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  }catch(e){}
+}
+function disableWakeLock(){ if(wakeLock){ wakeLock.release(); wakeLock=null; } }
+
+async function load(){
+  const res = await fetch(`/api/channels?token=${SECRET}`);
+  const text = await res.text();
+  const lines = text.split('\n');
+  let html='';
+  for(let i=0;i<lines.length;i++){
+    let l=lines[i].trim();
+    if(l.startsWith('#EXTINF')){
+      let name = l.split(',').pop().trim() || "حلقة بدون اسم";
+      let logo = l.match(/tvg-logo="([^"]+)"/)?.[1] || "https://i.imgur.com/3G7q6l2.png"; // صورة افتراضية للمسلسلات مو صورة بنت
+      let url = lines[i+1]?.trim();
+      if(url && url.startsWith('http')){
+        let protectedUrl = `/stream?url=${encodeURIComponent(url)}&token=${SECRET}`;
+        html+=`<div class="card" onclick="playVideo('${protectedUrl.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')">
+          <img src="${logo}" loading="lazy" onerror="this.src='https://i.imgur.com/3G7q6l2.png'">
+          <div class="t">${name}</div>
+        </div>`;
       }
     }
-    document.getElementById('list').innerHTML = html || "القائمة فارغة - تأكد من channels.m3u";
-  }catch(e){
-    document.getElementById('list').innerHTML = "خطأ: "+e.message;
   }
+  document.getElementById('list').innerHTML = html || "القائمة فارغة";
 }
-function playVideo(url){
+
+function playVideo(url,title){
+  const modal=document.getElementById('videoModal');
   const v=document.getElementById('player');
+  document.getElementById('videoTitle').innerText=title;
+  modal.classList.add('show');
   v.src=url;
   v.load();
-  v.play().catch(()=>{});
-  window.scrollTo(0,0);
+  v.play();
+  enableWakeLock();
+  // فتح ملئ الشاشة تلقائيا اذا الموبايل يدعم
+  if(v.requestFullscreen) setTimeout(()=>{ try{v.requestFullscreen()}catch(e){} },300);
 }
+
+function closeVideo(){
+  const modal=document.getElementById('videoModal');
+  const v=document.getElementById('player');
+  v.pause();
+  v.src="";
+  modal.classList.remove('show');
+  disableWakeLock();
+  if(document.fullscreenElement) document.exitFullscreen();
+}
+
+function toggleFull(){
+  const v=document.getElementById('player');
+  if(!document.fullscreenElement) v.requestFullscreen(); else document.exitFullscreen();
+}
+
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') enableWakeLock(); });
+
 load();
 </script>
-
-<!-- كود Social Bar او Popunder تحطه هنا اذا عندك -->
-<!-- الصق كود البار هنا -->
-
 </body>
 </html>
